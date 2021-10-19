@@ -32,17 +32,27 @@
 static const int NUM_CLASSES_YOLO_VOC = 20;
 
 /* C-linkage to prevent name-mangling */
-extern "C"
-bool NvDsInferParseOnnxTinyYolov3 (std::vector<NvDsInferLayerInfo> const &outputLayersInfo,
+extern "C" bool NvDsInferParseOnnxTinyYolov3 (std::vector<NvDsInferLayerInfo> const &outputLayersInfo,
         NvDsInferNetworkInfo  const &networkInfo,
         NvDsInferParseDetectionParams const &detectionParams,
         std::vector<NvDsInferObjectDetectionInfo> &objectList);
+
+extern "C" bool NvDsInferParseOnnxYolov3(std::vector<NvDsInferLayerInfo> const& outputLayersInfo,
+        NvDsInferNetworkInfo const& networkInfo,
+        NvDsInferParseDetectionParams const& detectionParams,
+        std::vector<NvDsInferParseObjectInfo>& objectList);
+
 
 
 static inline float clamp(const float val, const float minVal, const float maxVal)
 {
     assert(minVal <= maxVal);
     return std::min(maxVal, std::max(minVal, val));
+}
+
+static inline float sigmoid(const float in)
+{
+    return 1.f / (1.f + exp(-1 * in));
 }
 
 /* This is a sample bounding box parsing function for the sample YoloV3 detector model */
@@ -102,16 +112,16 @@ decodeYoloV3Tensor(
                 const int numGridCells = gridSizeH * gridSizeW;
                 const int bbindex = y * gridSizeW + x;
                 const float bx
-                    = x + detections[bbindex + numGridCells * (b * (5 + numOutputClasses) + 0)];
+                    = x + sigmoid(detections[bbindex + numGridCells * (b * (5 + numOutputClasses) + 0)]);
                 const float by
-                    = y + detections[bbindex + numGridCells * (b * (5 + numOutputClasses) + 1)];
+                    = y + sigmoid(detections[bbindex + numGridCells * (b * (5 + numOutputClasses) + 1)]);
                 const float bw
-                    = pw * detections[bbindex + numGridCells * (b * (5 + numOutputClasses) + 2)];
+                    = pw * exp(detections[bbindex + numGridCells * (b * (5 + numOutputClasses) + 2)]);
                 const float bh
-                    = ph * detections[bbindex + numGridCells * (b * (5 + numOutputClasses) + 3)];
+                    = ph * exp(detections[bbindex + numGridCells * (b * (5 + numOutputClasses) + 3)]);
 
                 const float objectness
-                    = detections[bbindex + numGridCells * (b * (5 + numOutputClasses) + 4)];
+                    = sigmoid(detections[bbindex + numGridCells * (b * (5 + numOutputClasses) + 4)]);
 
                 float maxProb = 0.0f;
                 int maxIndex = -1;
@@ -200,6 +210,23 @@ static bool NvDsInferParseYoloV3(
     return true;
 }
 
+extern "C" bool NvDsInferParseOnnxYolov3(
+    std::vector<NvDsInferLayerInfo> const& outputLayersInfo,
+    NvDsInferNetworkInfo const& networkInfo,
+    NvDsInferParseDetectionParams const& detectionParams,
+    std::vector<NvDsInferParseObjectInfo>& objectList)
+{
+    static const std::vector<float> kANCHORS = {
+        10.0, 13.0, 16.0,  30.0,  33.0, 23.0,  30.0,  61.0,  62.0,
+        45.0, 59.0, 119.0, 116.0, 90.0, 156.0, 198.0, 373.0, 326.0};
+    static const std::vector<std::vector<int>> kMASKS = {
+        {6, 7, 8},
+        {3, 4, 5},
+        {0, 1, 2}};
+    return NvDsInferParseYoloV3 (
+        outputLayersInfo, networkInfo, detectionParams, objectList,
+        kANCHORS, kMASKS);
+}
 
 extern "C"
 bool NvDsInferParseOnnxTinyYolov3 (std::vector<NvDsInferLayerInfo> const &outputLayersInfo,
@@ -211,8 +238,8 @@ bool NvDsInferParseOnnxTinyYolov3 (std::vector<NvDsInferLayerInfo> const &output
         10, 14, 23, 27, 37, 58, 81, 82, 135, 169, 344, 319};
     static const std::vector<std::vector<int>> kMASKS = {
         {3, 4, 5},
-        // {0, 1, 2}}; // as per output result, select {1,2,3}
-        {1, 2, 3}};
+        {0, 1, 2}}; // as per output result, select {1,2,3}
+        // {1, 2, 3}};
 
     /***************
     std::cout << "zczjx --> NvDsInferParseOnnxTinyYolov3" << std::endl;
@@ -239,4 +266,5 @@ bool NvDsInferParseOnnxTinyYolov3 (std::vector<NvDsInferLayerInfo> const &output
 
 /* Check that the custom function has been defined correctly */
 CHECK_CUSTOM_PARSE_FUNC_PROTOTYPE(NvDsInferParseOnnxTinyYolov3);
+CHECK_CUSTOM_PARSE_FUNC_PROTOTYPE(NvDsInferParseOnnxYolov3);
 

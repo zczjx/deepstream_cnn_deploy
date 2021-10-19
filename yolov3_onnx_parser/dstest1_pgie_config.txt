@@ -62,7 +62,7 @@ gpu-id=0
 # 1/255 pixel value uniform to 1.0f
 net-scale-factor=0.0039215697906911373
 model-color-format=0
-onnx-file=./tiny_yolov3_model.onnx
+onnx-file=./yolov3_model.onnx
 labelfile-path=./labels.txt
 num-detected-classes=20
 batch-size=1
@@ -72,10 +72,10 @@ interval=0
 gie-unique-id=1
 cluster-mode=2
 maintain-aspect-ratio=1
-parse-bbox-func-name=NvDsInferParseOnnxTinyYolov3
+parse-bbox-func-name=NvDsInferParseOnnxYolov3
 custom-lib-path=./libnvds_yolov3_onnx_bboxparser.so
-output-blob-names=yolo1;yolo2
+# output-blob-names=yolo1;yolo2
 
 [class-attrs-all]
-nms-iou-threshold=0.35
-pre-cluster-threshold=0.1
+nms-iou-threshold=0.45
+pre-cluster-threshold=0.5
