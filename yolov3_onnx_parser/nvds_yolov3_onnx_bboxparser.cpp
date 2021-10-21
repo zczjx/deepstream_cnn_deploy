@@ -129,7 +129,7 @@ decodeYoloV3Tensor(
                 for (uint i = 0; i < numOutputClasses; ++i)
                 {
                     float prob
-                        = (detections[bbindex
+                        = sigmoid(detections[bbindex
                                       + numGridCells * (b * (5 + numOutputClasses) + (5 + i))]);
 
                     if (prob > maxProb)
